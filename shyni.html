@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Pokédex 151</title>
+
+<style>
+body {
+    font-family: Arial;
+    text-align: center;
+    background: #111;
+    color: white;
+}
+
+.topbar {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 10px;
+}
+
+#grid {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 6px;
+    max-width: 700px;
+    margin: 20px auto;
+}
+
+.cell {
+    background: #222;
+    padding: 8px;
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+.found {
+    background: #1e3a1e;
+}
+
+.shiny {
+    border: 2px solid gold;
+    box-shadow: 0 0 10px gold;
+}
+
+img {
+    width: 50px;
+}
+
+input {
+    padding: 10px;
+    margin: 5px;
+}
+
+button {
+    padding: 8px;
+    margin: 5px;
+    cursor: pointer;
+}
+
+#leaderboard {
+    margin-top: 20px;
+}
+</style>
+
+</head>
+<body>
+
+<h1>🧠 Pokédex 151</h1>
+
+<div class="topbar">
+    <div id="counter">0 / 151</div>
+    <div>🏆 Score : <span id="score">0</span></div>
+</div>
+
+<input id="pseudo" placeholder="Ton pseudo">
+<br>
+<input id="input" placeholder="Nom du Pokémon">
+<br>
+
+<button onclick="add()">Ajouter</button>
+<button onclick="hint()">💡 Indice</button>
+<button onclick="giveUp()">🏳️ Abandon</button>
+<button onclick="reset()">Reset</button>
+
+<div id="grid"></div>
+
+<h2>🏆 Classement</h2>
+<div id="leaderboard"></div>
+
+<script>
+
+// liste pokemon
+const names = [
+"bulbizarre","herbizarre","florizarre","salameche","reptincel","dracaufeu",
+"carapuce","carabaffe","tortank","chenipan","chrysacier","papilusion",
+"aspicot","coconfort","dardargnan","roucool","roucoups","roucarnage",
+"rattata","rattatac","piafabec","rapasdepic","abo","arbok","pikachu","raichu",
+"sabelette","sablaireau","nidoran f","nidorina","nidoqueen","nidoran m",
+"nidorino","nidoking","melofee","melodelfe","goupix","feunard","rondoudou",
+"grodoudou","nosferapti","nosferalto","mystherbe","ortide","rafflesia",
+"paras","parasect","mimitoss","aeromite","taupiqueur","triopikeur","miaouss",
+"persian","psykokwak","akwakwak","ferosinge","colossinge","caninos","arcanin",
+"ptitard","tetarte","tartard","abra","kadabra","alakazam","machoc",
+"machopeur","mackogneur","chetiflor","boustiflor","empiflor","tentacool",
+"tentacruel","racaillou","gravalanch","grolem","ponyta","galopa","ramoloss",
+"flagadoss","magneti","magneton","canarticho","doduo","dodrio","otaria",
+"lamantine","tadmorv","grotadmorv","kokiyas","crustabri","fantominus",
+"spectrum","ectoplasma","onix","soporifik","hypnomade","krabby","krabboss",
+"voltorbe","electrode","noeunoeuf","noadkoko","osselait","ossatueur",
+"kicklee","tygnon","excelangue","smogo","smogogo","rhinocorne","rhinoferos",
+"leveinard","saquedeneu","kangourex","hypotrempe","hypocean","poissirene",
+"poissoroy","stari","staross","m.mime","insecateur","lippoutou","elektek",
+"magmar","scarabrute","tauros","magicarpe","leviator","lokhlass","metamorph",
+"evoli","aquali","voltali","pyroli","porygon","amonita","amonistar","kabuto",
+"kabutops","ptera","ronflex","artikodin","electhor","sulfura","minidraco",
+"draco","dracolosse","mewtwo","mew"
+];
+
+const POKEDEX = names.map((n,i)=>[i+1,n]);
+
+let found = JSON.parse(localStorage.getItem("found")) || [];
+let shiny = JSON.parse(localStorage.getItem("shiny")) || {};
+let hintsUsed = 0;
+
+// pseudo
+document.getElementById("pseudo").value = localStorage.getItem("pseudo") || "";
+
+document.getElementById("pseudo").addEventListener("input", e=>{
+    localStorage.setItem("pseudo", e.target.value);
+});
+
+// ENTER
+document.getElementById("input").addEventListener("keypress", e=>{
+    if(e.key==="Enter") add();
+});
+
+// score
+function getScore(){
+    return found.length * 10 - hintsUsed * 5;
+}
+
+// ajouter
+function add(){
+    let val = document.getElementById("input").value.toLowerCase().trim();
+    let entry = POKEDEX.find(p=>p[1]===val);
+
+    if(!entry) return;
+    if(found.includes(entry[0])) return;
+
+    found.push(entry[0]);
+
+    // 🎲 chance shiny (1/64)
+    if(Math.random() < 1/25){
+        shiny[entry[0]] = true;
+        alert("✨ SHINY !!! ✨");
+    }
+
+    localStorage.setItem("found",JSON.stringify(found));
+    localStorage.setItem("shiny",JSON.stringify(shiny));
+
+    document.getElementById("input").value="";
+    render();
+}
+
+// indice
+function hint(){
+    let remaining = POKEDEX.filter(p=>!found.includes(p[0]));
+    if(remaining.length===0) return;
+
+    let random = remaining[Math.floor(Math.random()*remaining.length)];
+    hintsUsed++;
+
+    alert("Indice : commence par '" + random[1][0].toUpperCase() + "'");
+    render();
+}
+
+// abandon
+function giveUp(){
+    if(confirm("Tu abandonnes ?")){
+        found = POKEDEX.map(p=>p[0]);
+        render();
+    }
+}
+
+// affichage
+function render(){
+    let grid = document.getElementById("grid");
+    grid.innerHTML="";
+
+    POKEDEX.forEach(([id,name])=>{
+        let div = document.createElement("div");
+
+        if(found.includes(id)){
+            div.className = "cell found" + (shiny[id] ? " shiny" : "");
+
+            div.innerHTML = `
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${shiny[id] ? 'shiny/' : ''}${id}.png">
+                <div>${name}</div>
+            `;
+        } else {
+            div.className="cell";
+            div.textContent = "#" + id;
+        }
+
+        grid.appendChild(div);
+    });
+
+    document.getElementById("counter").textContent = found.length + "/151";
+    document.getElementById("score").textContent = getScore();
+
+    // fin
+    if(found.length===151){
+        let scores = JSON.parse(localStorage.getItem("scores")||"[]");
+
+        scores.push({
+            pseudo: localStorage.getItem("pseudo") || "Anonyme",
+            score: getScore()
+        });
+
+        scores.sort((a,b)=>b.score-a.score);
+
+        localStorage.setItem("scores",JSON.stringify(scores));
+        displayLeaderboard();
+
+        alert("🏆 Pokédex complété !");
+    }
+}
+
+// leaderboard
+function displayLeaderboard(){
+    let scores = JSON.parse(localStorage.getItem("scores")||"[]");
+
+    let html="";
+    scores.slice(0,5).forEach(s=>{
+        html += `<div>${s.pseudo} - ${s.score}</div>`;
+    });
+
+    document.getElementById("leaderboard").innerHTML=html;
+}
+
+// reset
+function reset(){
+    if(confirm("Reset ?")){
+        found=[];
+        shiny={};
+        hintsUsed=0;
+        localStorage.removeItem("found");
+        localStorage.removeItem("shiny");
+        render();
+    }
+}
+
+render();
+displayLeaderboard();
+
+</script>
+
+</body>
+</html>
